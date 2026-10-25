@@ -24,6 +24,13 @@ str(lead)
 
 ```
 
+##Data Correction 
+After a brief conversation with the primary investigator, we find out one individual who had an IQ value of “999” was in fact supposed to have a value of “99”. Thus the change was made. 
+```{r}
+lead$IQ[lead$IQ == 999] <- 99
+```
+
+
 ## IQ Levels by Location
 
 ```{r}
@@ -34,8 +41,7 @@ boxplot(IQ ~ Smelter,
    col = c("lightblue", "lightgreen"))
 ```
 
-The boxplot compares IQ scores between children who lived near the smelter and those who lived farther away. An unusually high value of 999 in the Far group stretches the vertical scale, making the remaining scores harder to compare.
-
+The boxplot compares IQ scores between children who lived near the smelter and those who lived farther away. The Far group has a higher median IQ.
 
 ## Summary Table of IQ Scores
 
@@ -54,6 +60,7 @@ The table summarizes the number of children, mean, standard
 deviation, and median IQ for each location group. The mean IQ
 was `r round(iq_summary["Far", "Mean"], 2)` in the Far group
 and `r round(iq_summary["Near", "Mean"], 2)` in the Near group.
+
 
 
 
