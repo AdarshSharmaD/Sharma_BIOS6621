@@ -1,0 +1,60 @@
+---
+title: "Lead Exposure and IQ"
+author: "Adarsh SharmaD"
+date: "2026-09-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background 
+For this report, we compare IQ scores between children who lived near a lead-emitting ore smelter and those who lived farther away. The dataset includes and observation of 124 children between the ages of 3 and 15 in El Paso, Texas. Location is recorded as Near for children who lived within one mile of the smelter and Far for those who lived farther away. IQ was measured using the Wechsler Intelligence Scale for Children.
+Although we are comparing IQ by location, the original study compared children with high and low lead levels. Any differences observed here describe the two location groups and do not establish that living near the smelter caused a difference in IQ.
+
+## Data Import and inspect 
+
+```{r import-data}
+lead <- read.csv("../DataRaw/lead-iq-01.csv")
+
+names(lead)
+head(lead)
+str(lead)
+
+```
+
+## IQ Levels by Location
+
+```{r}
+boxplot(IQ ~ Smelter,
+   data = lead,
+   main = "IQ Levels by Location Status",
+   xlab = "Location", ylab = "IQ Score",
+   col = c("lightblue", "lightgreen"))
+```
+
+The boxplot compares IQ scores between children who lived near the smelter and those who lived farther away. An unusually high value of 999 in the Far group stretches the vertical scale, making the remaining scores harder to compare.
+
+
+## Summary Table of IQ Scores
+
+```{r iq-summary}
+iq_summary <- t(sapply(
+  split(lead$IQ, lead$Smelter),
+  function(x) c(N = length(x), Mean = mean(x),
+                SD = sd(x), Median = median(x))
+))
+
+knitr::kable(iq_summary, digits = 2,
+             caption = "IQ scores by location status")
+```
+
+The table summarizes the number of children, mean, standard
+deviation, and median IQ for each location group. The mean IQ
+was `r round(iq_summary["Far", "Mean"], 2)` in the Far group
+and `r round(iq_summary["Near", "Mean"], 2)` in the Near group.
+
+
+
+
