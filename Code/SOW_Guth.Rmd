@@ -1,0 +1,74 @@
+---
+title: Report
+output:
+  pdf_document: 
+    fig_caption: yes
+    number_sections: yes
+header-includes: 
+  \usepackage{fancyhdr} 
+  \usepackage{graphicx} 
+  \usepackage{eurosym}
+  \usepackage{booktabs,xcolor} 
+  \usepackage{float}
+  \floatplacement{figure}{H}
+  \pagestyle{fancy} 
+  \fancyhf{} 
+  \addtolength{\headheight}{1.0cm}
+  \rfoot{Page \thepage} \fancypagestyle{plain}{\pagestyle{fancy}}
+geometry: margin=1in
+---
+
+\rhead{\today}
+\lhead{\includegraphics[width=10cm]{`r system.file("figures",  "sph_cida_wm_blk.png", package = "CIDAtools")`}}
+
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(CIDAtools)
+```
+
+**Project**: Scope of Work OSCE scores between URM and Non-URM Medical Students 
+**Analyst**: Adarsh Sharma Dahal\newline
+**Investigator(s)**: Dr. Guth \newline
+**Report generated**: `r paste(format(Sys.Date(), '%B %d, %Y'))`\newline
+
+
+# Background and Study Design 
+This retrospective observational study with repeated assessments will examine differences in clinical skills assessment scores between students classified as underrepresented in medicine (URM) and non-URM students at the University of Colorado School of Medicine. Student groups are defined by the school’s URM variable. The AAMC indicator (URM_AAMC), which reflects underrepresentation across the United States, will not be used to define groups.Dr. Guth is the Principal Investigator who will provide educational context, and Adarsh Sharma will prepare the analysis. The data set being consulted describes the various pre-clerkship Objective Structured Clinical Examination (OSCE) scores of the Class of 2020, collected across medical school. Dr. Guth is interested in exploring rater bias, specifically the relationship of the gender and ethnicity of standardized patient raters of the OSCE with the clinical skills performance of students, in relation to students’ identified gender and URM status.
+
+# Discription of the Data
+The given dataset contains one row per student.It has 199 unique IDs and 52 variables, with a separate file explaining selected category codes. It includes URM classifications, recorded gender, race and ethnicity, USMLE results, clerkship grades and 16 pre-clerkship OSCE scores. These scores cover physical examination, communication, medical documentation and oral presentation, with multiple assessments for most areas. Institutional URM status will define the main 2 groups, the 16 OSCE scores will be analyzed individually, and OPC final course grade will be the secondary outcome.
+
+# Anticipated sample size/study population
+The consultation anticipated 180 student sample, but the given file contains 199; Dr. Guth will confirm the cohort membership and eligibility before analysis. There are 129 students with completeed 16 OSCE scores, 31 with partial scores and 39 with no OSCE scores. Of the 160 students with an observed OSCE score, 154 have known institutional URM status which is 48 URM and 106 non-URM students. Students missing one OSCE component will be retained, students missing more than one will be flagged for investigator review, and each comparison will use eligible students with a recorded outcome and known URM status.
+
+# Hypotheses/research questions
+
+The primary null hypothesis for individual OSCE score is that the mean score is equal in the URM and non-URM groups. The alternative hypothesis is that the mean OSCE score differs between the URM and non-URM groups. The OSCE comparisons are two-sided because a direction of difference is not assumed.
+For the OPC final course grade, the secondary null hypothesis is that the proportions receiving Pass, High Pass, and Honors are the same in both groups. The alternative is that the grade distributions differ. Dr. Guth also mentioned that only a limited number of Honors and High Pass grades can be awarded; this will be considered during the analysis.
+Relationships involving rater characteristics, or differences between cohorts, cannot be evaluated without additional rater information or cohort labels.
+
+# Analysis Plan Sketch
+
+We will verify coding and scoring, summarize students and outcomes by URM group using tables and boxplots. We will also review missing values and score distributions, including any concentration of scores at the maximum. Welch Two-sample t-test will be used to compare between URM and non-URM for each 16 OSCE. We will report group means, mean differences, and 95% Confidence interval with Holm adjustment across the 16 primary tests. To estimate one overall average difference we will also fit a linear mixed-effects model with a random intercept for student, adjusting for OSCE and student gender. OPC grade distributions will be compared using a chi-square test, or Fisher’s exact test if expected counts are small or the limit on Honors and High Pass grades fixes the grade totals. A Mann-Whitney U test will be used as a sensitivity analysis if scores are concentrated at the maximum. Analyses involving standardized patient gender and ethnicity depend on receiving rater-level data. The number of students and any exclusions will be reported for every analysis.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
