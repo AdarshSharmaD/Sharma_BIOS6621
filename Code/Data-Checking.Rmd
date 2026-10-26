@@ -1,0 +1,358 @@
+---
+title: "Dr. Guth Data Examination Report"
+output:
+  pdf_document:
+    fig_caption: yes
+    number_sections: yes
+header-includes:
+  \usepackage{fancyhdr}
+  \usepackage{graphicx}
+  \usepackage{eurosym}
+  \usepackage{booktabs,xcolor}
+  \usepackage{float}
+  \floatplacement{figure}{H}
+  \pagestyle{fancy}
+  \fancyhf{}
+  \addtolength{\headheight}{1.0cm}
+  \rfoot{Page \thepage} \fancypagestyle{plain}{\pagestyle{fancy}}
+geometry: margin=1in
+---
+
+\rhead{\today}
+\lhead{\includegraphics[width=10cm]{`r system.file("figures", "sph_cida_wm_blk.png", package = "CIDAtools")`}}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE
+)
+
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(CIDAtools)
+```
+
+**Project**: Dr. Guth Data Examination \newline
+**Analyst**: Adarsh Sharma \newline
+**Investigator**: Dr. Guth \newline
+**Report generated**: `r format(Sys.Date(), '%B %d, %Y')` \newline
+
+
+```{r import_data, include=FALSE}
+# Importing BIOS6621_Guth_data.csv
+guth_raw <- read.csv(
+  "/Users/adarsh/Desktop/BIOS_6621/Homework 1/Sharma_BIOS6621/DataRaw/BIOS6621_Guth_data.csv",
+  stringsAsFactors = FALSE
+)
+
+# Importing BIOS6621_Guth_data_values
+guth_values <- read.csv(
+  "/Users/adarsh/Desktop/BIOS_6621/Homework 1/Sharma_BIOS6621/DataRaw/BIOS6621_Guth_data_values.csv",
+  stringsAsFactors = FALSE
+)
+
+guth_clean <- guth_raw
+ 
+```
+
+
+
+# Introduction
+
+Dr. Guth’s study looks at whether pre-clerkship OSCE scores differ between students who are underrepresented in medicine and those who are not at the University of Colorado School of Medicine. Clerkship grade is of interest due to its link to previous literature, but this report focuses on OPC final course grade. Before answering the research question,the data needed to be checked for missingness, incorrect coding, and unusual values. This report describes those checks and changes made through R markdown, and the descriptive results after cleaning. No comparisons between groups were conducted.
+
+# Methods
+
+I imported the dataset and coding guide into R and created a separate copy for cleaning. The original Data is unchanged. I checked the number of records and variables, missing and repeated student IDs, duplicate rows, missing values, and blank entries. I also checked selected categorical values against the coding guide and examined the ranges of USMLE and OSCE scores.
+Blank text entries were changed to NA, and categorical codes were given readable labels. Gender code “D” was labeled Non-binary following clarification from zoom meeting, and unknown URM status was kept as a separate category. No student was removed, and missing value was not replaced.
+I used box plots to identify potentially unusual OSCE scores and histograms to examine the shape and spread of each OSCE score distribution. Histogram intervals were set at five percentage points. Unusual scores were retained unless there was evidence that they were incorrect.
+Numerical variables were summarized using the number of observed scores, mean, standard deviation, median, quartiles, and range. Missing scores were excluded separately for each numerical summary and plot. Categorical variables were summarized using counts and percentages out of all 199 students, with missing and unknown categories shown separately. Report focused on OSCE scores, both URM, gender, USMLE measures, and OPC final course grade. No comparisons between groups and no hypothesis tests. 
+
+## Data Checking and Cleaning
+```{r initial_checks}
+# dimensions
+nrow(guth_raw)
+ncol(guth_raw)
+
+sum(is.na(guth_raw$ResearchID))  # Missing student ID  
+sum(duplicated(guth_raw$ResearchID)) # Repeated student ID
+sum(duplicated(guth_raw))  # Fully duplicated rows
+```
+Total Number of Records is 199 and 52 variables. Based on the check, no records were removed.
+
+```{r missing_values}
+# Counting missing values and blank entries
+missing_table <- data.frame( Variable = names(guth_raw),
+  Missing = sapply(guth_raw, function(x) sum(is.na(x))),
+  Blank = sapply(guth_raw, function(x) { if (is.character(x)) {
+      sum(trimws(x) == "", na.rm = TRUE)
+    } else {
+      0
+    }
+  })
+)
+# Calculating combined percentage
+missing_table$Percent <- round( 100 * (missing_table$Missing + missing_table$Blank) / nrow(guth_raw), 1
+)
+missing_table <- missing_table[ missing_table$Percent > 0,
+]
+
+knitr::kable(
+  missing_table,
+  row.names = FALSE,
+  caption = "Missing and blank entries.",
+  col.names = c("Variable", "Missing-NA", "Blank", "Missing or blank (%)")
+)
+```
+
+Missing and blank entries were found across several variables. OPC final grade was missing for 20 students (10.1%), and OSCE scores had 20.6%–32.7% missingness. 
+
+```{r osce_missingness}
+# Identify OSCE score columns
+osce_vars <- names(guth_raw)[
+  grepl("^P[12].*Score$", names(guth_raw))
+]
+
+# Count missing OSCE scores for each student and summarize completeness 
+osce_missing <- rowSums(is.na(guth_raw[osce_vars]))
+
+osce_completeness <- data.frame(
+  Category = c(
+    "All OSCE scores observed",
+    "Some OSCE scores missing",
+    "All OSCE scores missing"
+  ),
+  Students = c(
+    sum(osce_missing == 0),
+    sum(osce_missing > 0 & osce_missing < length(osce_vars)),
+    sum(osce_missing == length(osce_vars))
+  )
+)
+
+osce_completeness$Percent <- round( 100 * osce_completeness$Students / nrow(guth_raw), 1
+)
+
+knitr::kable(
+  osce_completeness,
+  row.names = FALSE,
+  caption = "Completeness of OSCE scores across students."
+)
+```
+All OSCE scores were available for 129 students (64.8%). Some scores were missing for 31 students (15.6%), and all scores were missing for 39 students (19.6%). No students were removed.
+
+```{r standardize_blanks, include=FALSE}
+# Standardizing blank entries to NA in the working copy
+guth_clean <- guth_clean %>%
+  mutate(across(
+    where(is.character), ~ replace(.x, !is.na(.x) & trimws(.x) == "", NA_character_)
+  ))
+```
+
+Blank entries were converted to `NA` in the working dataset to standardize the representation of missing information.
+
+```{r categorical_checks, results='asis'}
+# Variables to check
+category_vars <- c(
+  "OPC_Final_Course_Grade",
+  "gender",
+  "URM",
+  "URM_AAMC",
+  "STEP1_PassFail",
+  "STEP2CK_PassFail"
+)
+
+# Displaying category counts
+for (variable in category_vars) { print(knitr::kable(
+    as.data.frame(table(guth_clean[[variable]], useNA = "ifany")),
+    col.names = c("Value", "Students"),
+    caption = paste("Frequency distribution:", variable),
+    row.names = FALSE
+  ))
+}
+```
+
+The selected categorical variables contained expected codes. URM code 3 represented Unknown, and gender code “D” was confirmed as Nonbinary.
+
+```{r label_categories, include=FALSE}
+guth_clean <- guth_clean %>%
+  mutate(
+    OPC_Final_Course_Grade = factor( OPC_Final_Course_Grade,
+      levels = c(0, 1, 2, 3, 9), labels = c(  "Fail", "Pass", "High Pass", "Honors", "Pass with remediation"
+      )
+    ),
+    gender = factor( gender, 
+      levels = c("F", "M", "D"),
+      labels = c("Female", "Male", "Nonbinary")
+    ),
+    URM = factor(URM,
+      levels = c(0, 1, 3),
+      labels = c("Non-URM", "URM", "Unknown")
+    ),
+    URM_AAMC = factor( URM_AAMC,
+      levels = c(0, 1, 3),
+      labels = c("Non-URiM", "URiM", "Unknown")
+    ),
+    STEP1_PassFail = factor( STEP1_PassFail,
+      levels = c("F", "P"),
+      labels = c("Fail", "Pass")
+    ),
+    STEP2CK_PassFail = factor( STEP2CK_PassFail,
+      levels = c("F", "P"),
+      labels = c("Fail", "Pass")
+    )
+  )
+```
+
+Categorical codes were converted to readable labels. Gender code “D”
+was labeled “Nonbinary” following clarification. Unknown URM status
+was retained as a separate category.
+
+```{r score_checks}
+# Select USMLE and OSCE scores
+score_vars <- c(
+  "STEP1_ExamScore",
+  "STEP2CK_ExamScore",
+  osce_vars
+)
+
+# Summarize observed score ranges
+score_check <- data.frame(
+  Variable = score_vars,
+  Observed = sapply(guth_clean[score_vars], function(x) {
+    sum(!is.na(x))
+  }),
+  Minimum = sapply(guth_clean[score_vars], function(x) {
+    if (all(is.na(x))) NA_real_ else min(x, na.rm = TRUE)
+  }),
+  Maximum = sapply(guth_clean[score_vars], function(x) {
+    if (all(is.na(x))) NA_real_ else max(x, na.rm = TRUE)
+  })
+)
+
+knitr::kable(
+  score_check,
+  digits = 2,
+  row.names = FALSE,
+  caption = "Observed ranges of USMLE and OSCE scores."
+)
+
+# Count OSCE percentages outside the valid range
+sum(sapply(guth_clean[osce_vars], function(x) {
+  sum(x < 0 | x > 100, na.rm = TRUE)
+}))
+```
+Step 1 scores ranged from 164 to 267 among 199 students. Step 2 CK scores ranged from 209 to 276 among 198 students. All observed OSCE scores were within 0–100%. The lowest OSCE score was 28.26% on the P2 Spring Snelling physical examination assessment.
+
+```{r osce_boxplots, fig.width=9, fig.height=7, fig.cap="Distributions of observed OSCE scores. Points beyond the boxplot whiskers flag potentially unusual values; they do not establish errors."}
+guth_clean %>%
+  select(all_of(osce_vars)) %>%
+  pivot_longer(
+    everything(),
+    names_to = "Assessment",
+    values_to = "Score"
+  ) %>%
+  mutate(Assessment = gsub("_", " ", Assessment)) %>%
+  ggplot(aes(x = Score, y = Assessment)) +
+  geom_boxplot(na.rm = TRUE) +
+  scale_x_continuous(limits = c(0, 100)) +
+  labs(
+    title = "Distribution of OSCE Scores",
+    x = "OSCE score (%)",
+    y = NULL
+  ) +
+  theme_minimal()
+```
+Most OSCE scores were concentrated near 100%, with several low scores beyond the box plot whiskers.
+
+## Descriptive Statistics
+```{r score_descriptives}
+# Summarizing each USMLE and OSCE score
+score_summary <- data.frame(
+  Variable = score_vars,
+  Observed = sapply(guth_clean[score_vars], function(x) {
+    sum(!is.na(x))
+  }),
+  Mean = sapply(guth_clean[score_vars], mean, na.rm = TRUE),
+  SD = sapply(guth_clean[score_vars], sd, na.rm = TRUE),
+  Median = sapply(guth_clean[score_vars], median, na.rm = TRUE),
+  Q1 = sapply(guth_clean[score_vars], quantile,
+              probs = 0.25, na.rm = TRUE),
+  Q3 = sapply(guth_clean[score_vars], quantile,
+              probs = 0.75, na.rm = TRUE)
+)
+
+knitr::kable(
+  score_summary,
+  digits = 2,
+  row.names = FALSE,
+  caption = "Descriptive statistics for observed USMLE and OSCE scores."
+)
+```
+Among students with observed scores, the mean Step 1 score was 226.34 (SD = 20.02), and the mean Step 2 CK score was 243.03 (SD = 13.87). Across OSCE components, mean scores ranged from 85.30% to 96.87%, with 134–158 observations available per component. Several components had medians of 100%, suggesting scores were concentrated near the upper limit. These distributions support reporting medians and quartiles alongside means and standard deviations.
+
+```{r categorical_descriptives, results='asis'}
+# Summarizing labeled categories
+
+categorical_summary <- bind_rows(
+  lapply(category_vars, function(variable) {
+    counts <- as.data.frame(
+      table(guth_clean[[variable]], useNA = "ifany")
+    )
+ data.frame( Variable = variable,
+      Category = as.character(counts[[1]]),
+      Students = counts$Freq )
+  })
+)
+categorical_summary$Category[
+  is.na(categorical_summary$Category)
+] <- "Missing"
+
+categorical_summary$Percent <- round(
+  100 * categorical_summary$Students / nrow(guth_clean), 1
+)
+
+knitr::kable(
+  categorical_summary,
+  row.names = FALSE,
+  caption = "Categorical summaries after cleaning. Percentages use all 199 students."
+)
+```
+Of the 199 students, 101 (50.8%) were female, 97 (48.7%) were male, and one (0.5%) was nonbinary. Institution-specific URM status identified 60 students (30.2%) as underrepresented, compared with 52 (26.1%) using the AAMC classification; each variable recorded seven students (3.5%) as unknown. OPC final grades were Pass for 41 students (20.6%), High Pass for 66 (33.2%), and Honors for 72 (36.2%), with 20 grades missing (10.1%). Step 1 status indicated 187 passes (94.0%) and 12 failures (6.0%), while Step 2 CK status indicated 198 passes (99.5%) and one missing entry (0.5%).
+All percentages use the full sample of 199
+
+```{r osce_histograms, fig.width=10, fig.height=9, fig.cap="Distributions of observed OSCE scores. Missing scores are excluded."}
+guth_clean %>%
+  select(all_of(osce_vars)) %>%
+  pivot_longer( everything(),
+    names_to = "Assessment",
+    values_to = "Score", values_drop_na = TRUE
+  ) %>%
+  mutate(Assessment = gsub("_", " ", Assessment)) %>%
+  ggplot(aes(x = Score)) +
+  geom_histogram(
+    binwidth = 5, boundary = 0,
+    fill = "blue", color = "white"
+  ) +
+  facet_wrap(
+    ~ Assessment, ncol = 3,
+    labeller = label_wrap_gen(width = 25)
+  ) +
+  scale_x_continuous(breaks = c(0, 50, 100)) +
+  coord_cartesian(xlim = c(0, 100)) +
+  labs(
+    title = "Histogram of OSCE Scores",
+    x = "OSCE score (%)",
+    y = "Number of students"
+  ) +
+  theme_minimal() +
+  theme(strip.text = element_text(size = 8))
+```
+
+# Conclusions
+
+Missing information was the main concern with 39 students who are missing all the OSCE scores. THere are no missing or repeated IDs, duplicate rows, or unexpected codes in the selected categorical variables. All observed OSCE scores were within 0%–100%. Blank entries were changed to NA, and categorical codes were labeled. All 199 students were retained. Reasons for missing scores, unusually low scores. There is also the difference between the expected sample of 180, but dataset contains 199 records, may need clearification. 
+
+# AI Assistance
+I used ChatGPT to develop and troubleshoot some of the the code, and to properly Knit. 
